@@ -13,7 +13,6 @@ challenges during CTFs (Capture the Flag) contest.
 
 # About the Authors
 
-This repository is maintaned by
+This repository is maintaned by members of team bi0s. See AUTHORS for a complete list.
 
-**Siddharth Muralee**(@R3x)
-- Twitter : @Tr3x\_\_
+You can reach out to us on twitter.
