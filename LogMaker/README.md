@@ -1,4 +1,4 @@
-# TaintTracker
+# LogMaker 
 
 ## Objectives
 
