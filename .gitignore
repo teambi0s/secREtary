@@ -1,0 +1,15 @@
+# We don't any compiled executables
+*.out
+*.so
+*.o
+*.exe
+*.a
+*.lib
+
+# Editor Trash 
+*.swp
+
+# Don't need pin or other IDE files
+pin/
+out/
+.vscode/
