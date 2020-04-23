@@ -14,6 +14,7 @@ challenges during CTFs (Capture the Flag) contest.
 |TaintTracker|Basic taint analysis module custom built for CTFs|
 |Log Maker|Necessary logs for CTF purposes|
 |Anti2RE|Defeat Anti Reversing techniques in binaries|
+|VManalyze|Show VM switch cases|
 
 ### Note
 * This repository is still under active development and the commands are subject to change.
