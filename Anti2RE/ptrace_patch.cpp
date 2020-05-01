@@ -5,6 +5,8 @@
 using namespace std;
 
 string invalid = "$";
+ADDRINT ptrace_addr;
+
 
 INT32 Usage()
 {
@@ -13,22 +15,23 @@ INT32 Usage()
     return -1;
 }
 
-const string *Target2String(ADDRINT target)
+VOID ImageLoad(IMG img, VOID *v)
 {
-    string name = RTN_FindNameByAddress(target);
-    cout << name << endl;
-    if (name == "")
-        return &invalid;
-    else
-        return new string(name);
+	RTN rtn = RTN_FindByName(img, "ptrace");
+	if(RTN_Valid(rtn))
+	{
+		ptrace_addr = RTN_Address(rtn);
+	}
 }
 
 VOID FindPtrace(INS ins, VOID *v)
 {
 	if(INS_IsCall(ins))
 	{
+		cout << "0x" << hex <<INS_Address(ins) << "  ";
 		cout << INS_Disassemble(ins) << endl;
 		//if ptrace found
+		//ld_linux_attach.cpp
 		//PIN_Detach(); this does the patching;
 	}
 }
@@ -40,7 +43,7 @@ VOID runpatch(VOID *v)
 }
 VOID Fini(INT32 code, VOID *v)
 {
-	cerr << "Done Patching" << endl;
+	cerr << "Done Execution " << "Ptrace at " << hex << ptrace_addr << endl;
 }
 
 int main(int argc, char *argv[])
@@ -50,9 +53,14 @@ int main(int argc, char *argv[])
 	{
 		return Usage();
 	}
+	IMG_AddInstrumentFunction(ImageLoad, NULL);
+
 	INS_AddInstrumentFunction(FindPtrace, 0);
+	
 	PIN_AddFiniFunction(Fini,0);
+	
 	PIN_AddDetachFunction(runpatch, 0);
+	
 	PIN_StartProgram();
 
 	return 0;
