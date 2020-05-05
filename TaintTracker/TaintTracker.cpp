@@ -19,6 +19,10 @@ struct range
 std::list<struct range> bytesTainted;
 
 /*
+
+
+
+
  * BASIC UTILITY FUNCTIONS
  */
 int usage()
