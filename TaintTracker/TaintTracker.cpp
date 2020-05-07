@@ -7,7 +7,7 @@
 /*
  * BASE VARIABLE TO CHECK LIBC
  */
-#define LIBC_BASE 0x70000000000
+ADDRINT LIBC_BASE;
 
 /* BASIC TAINT AREA STRUCTURE */
 struct range
@@ -38,6 +38,17 @@ bool isLibraryFunction( UINT64 startAddr) {
     else {
       return false;
     }
+}
+void cmpInst(INS ins){
+
+}
+
+void movInst(INS ins){
+
+}
+
+void callInst(INS ins){
+
 }
 
 /*
@@ -83,6 +94,13 @@ bool TaintTracker::checkTaint(UINT64) {
 /*
  * PIN MODULE FUNCTIONS
  */
+
+VOID getbase(IMG img){
+
+	LIBC_BASE = IMG_LowAddress(img);
+
+}
+
 VOID Trace(TRACE trace, VOID *v) {
     // Instruction Iterator
     for (BBL bbl = TRACE_BblHead(trace); BBL_Valid(bbl); bbl = BBL_Next(bbl)) {
@@ -94,8 +112,9 @@ VOID Trace(TRACE trace, VOID *v) {
              *  3. Call instructions maybe
              */
 
-            if (INS_Opcode(ins) == XED_ICLASS_CMP) {
-              INS_InsertCall(
+            if (INS_Disassemble(ins).find("cmp") != std::string::npos && !isLibraryFunction(INS_Address(ins))) {
+              
+				INS_InsertCall(
                 ins, IPOINT_BEFORE, (AFUNPTR)cmpInst,
                 IARG_ADDRINT, INS_Address(ins),
                 IARG_PTR, new string(INS_Disassemble(ins)),
@@ -103,11 +122,22 @@ VOID Trace(TRACE trace, VOID *v) {
                 IARG_END);
 
             }
-            else {
-              if (INS_Opcode(ins) == XED_ICLASS_MOV) {
+            else if(INS_Disassemble(ins).find("mov") != std::string::npos && !isLibraryFunction(INS_Address(ins))) {
+				INS_InsertCall(
+                ins, IPOINT_BEFORE, (AFUNPTR)movInst,
+                IARG_ADDRINT, INS_Address(ins),
+                IARG_PTR, new string(INS_Disassemble(ins)),
+                IARG_MEMORYOP_EA, 0,
+                IARG_END);
 
             }
-            else {
+            else if(INS_Disassemble(ins).find("call") != std::string::npos && !isLibraryFunction(INS_Address(ins))){
+				INS_InsertCall(
+                ins, IPOINT_BEFORE, (AFUNPTR)callInst,
+                IARG_ADDRINT, INS_Address(ins),
+                IARG_PTR, new string(INS_Disassemble(ins)),
+                IARG_MEMORYOP_EA, 0,
+                IARG_END);
 
                 }
             }
@@ -149,9 +179,10 @@ int main(int argc, char *argv[]) {
         return usage();
     }
 
-     PIN_SetSyntaxIntel();
-	   PIN_AddSyscallEntryFunction(Syscall_entry, 0);
-     TRACE_AddInstrumentFunction(Trace, 0);
+    PIN_SetSyntaxIntel();
+	IMG_AddInstrumentFunctio(getbase, 0)
+	PIN_AddSyscallEntryFunction(Syscall_entry, 0);
+    TRACE_AddInstrumentFunction(Trace, 0);
  /*
   * NEVER RETURNS
   */
