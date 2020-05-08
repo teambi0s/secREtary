@@ -9,6 +9,7 @@
 /*
  * BASIC UTILITY FUNCTIONS
  */
+
 int usage()
 {
     cerr << "Not Properly Used" << endl;
@@ -26,18 +27,10 @@ bool isLibraryFunction() {
 /*
  * TAINT TRACKER FUNCTIONS
  */
-TaintTracker taintEngine(100);
-
-std::list<struct range> bytesTainted;
-struct range {
-    UINT64 start;
-    UINT64 end;
-};
-
 int TaintTracker::addTaint(UINT64 start, UINT64 size) {
     // Add basic tainting routine here
-    range taint;
-    taint.start = (start > taint_max) ? taint_max : start;
+    taint.start = start;
+    size = (size > taint_max) ? taint_max : size;
     taint.end = taint.start + size;
     bytesTainted.push_back(taint);
 
@@ -52,8 +45,16 @@ int TaintTracker::removeTaint(UINT64, UINT64) {
     return 0;
 }
 
-bool TaintTracker::checkTaint(UINT64) {
+bool TaintTracker::checkTaint(UINT64 addr) {
     // Returns whether a memory is tainted or not
+
+    list<struct range>::iterator i;
+
+    for(i = bytesTainted.begin(); i != bytesTainted.end(); ++i) {
+        if (addr >= i->start && addr < i->end) {
+            return true;
+        }
+    }
     return false;
 }
 /*
@@ -61,33 +62,24 @@ bool TaintTracker::checkTaint(UINT64) {
  */
 
 /*
- * DEBUG FUNCTIONS
+ * TAINT TRACKER DEBUG FUNCTIONS
  */
-void readMem(UINT64 insAddr, std::string insDis, UINT64 memOp)
+void TaintTracker::readMem(UINT64 insAddr, std::string insDis, UINT64 memOp)
 {
-    list<struct range>::iterator i;
-    UINT64 addr = memOp;
-
-    for(i = bytesTainted.begin(); i != bytesTainted.end(); ++i){
-        if (addr >= i->start && addr < i->end){
-            std::cout << std::hex << "[READ in 0x %x" << addr << "]\t"
-                      << insAddr << ": " << insDis<< std::endl;
-        }
+    if (taintEngine.checkTaint(memOp)) {
+        std::cout << std::hex << "[READ in 0x" << memOp << "]\t"
+                  << insAddr << ": " << insDis<< std::endl;
     }
 }
 
-void writeMem(UINT64 insAddr, std::string insDis, UINT64 memOp)
+void TaintTracker::writeMem(UINT64 insAddr, std::string insDis, UINT64 memOp)
 {
-    list<struct range>::iterator i;
-    UINT64 addr = memOp;
-
-    for(i = bytesTainted.begin(); i != bytesTainted.end(); ++i){
-        if (addr >= i->start && addr < i->end){
-            std::cout << std::hex << "[WRITE in 0x %x" << addr << "]\t"
-                      << insAddr << ": " << insDis << std::endl;
-        }
+    if (taintEngine.checkTaint(memOp)) {
+        std::cout << std::hex << "[WRITE in 0x" << memOp << "]\t"
+                  << insAddr << ": " << insDis << std::endl;
     }
 }
+
 /*
  * END OF DEBUG FUNCTIONS
  */
@@ -95,10 +87,12 @@ void writeMem(UINT64 insAddr, std::string insDis, UINT64 memOp)
 /*
  * PIN MODULE FUNCTIONS
  */
-VOID Trace(TRACE trace, VOID *v) {
+void Trace(TRACE trace, VOID *v) {
     // Instruction Iterator
-    for (BBL bbl = TRACE_BblHead(trace); BBL_Valid(bbl); bbl = BBL_Next(bbl)) {
-        for ( INS ins = BBL_InsHead(bbl); INS_Valid(ins); ins = INS_Next(ins)) {
+    for (BBL bbl = TRACE_BblHead(trace); BBL_Valid(bbl);
+         bbl = BBL_Next(bbl)) {
+        for ( INS ins = BBL_InsHead(bbl); INS_Valid(ins);
+              ins = INS_Next(ins)) {
 
             //  Temporary handling of instuctions that calls debug functions
 
@@ -120,10 +114,9 @@ VOID Trace(TRACE trace, VOID *v) {
                 }
             }
             */
-
             if (INS_MemoryOperandIsRead(ins, 0) && INS_OperandIsReg(ins, 0)){
                   INS_InsertCall(
-                               ins, IPOINT_BEFORE, (AFUNPTR)readMem,
+                               ins, IPOINT_BEFORE,(AFUNPTR)taintEngine.readMem,
                                IARG_ADDRINT, INS_Address(ins),
                                IARG_PTR, new string(INS_Disassemble(ins)),
                                IARG_MEMORYOP_EA, 0,
@@ -131,7 +124,7 @@ VOID Trace(TRACE trace, VOID *v) {
             }
             else if (INS_MemoryOperandIsWritten(ins, 0)){
                 INS_InsertCall(
-                               ins, IPOINT_BEFORE, (AFUNPTR)writeMem,
+                               ins, IPOINT_BEFORE,(AFUNPTR)taintEngine.writeMem,
                                IARG_ADDRINT, INS_Address(ins),
                                IARG_PTR, new string(INS_Disassemble(ins)),
                                IARG_MEMORYOP_EA, 0,
