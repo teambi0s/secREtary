@@ -180,7 +180,7 @@ void Trace(TRACE trace, VOID *v) {
 >>>>>>> f2be814016fe24aa45e6ac939c93954ca0b48611
 
             if (INS_Disassemble(ins).find("cmp") != std::string::npos && !isLibraryFunction(INS_Address(ins))) {
-              
+
 				INS_InsertCall(
                 ins, IPOINT_BEFORE, (AFUNPTR)cmpInst,
                 IARG_ADDRINT, INS_Address(ins),
