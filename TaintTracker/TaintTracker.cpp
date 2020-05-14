@@ -1,5 +1,4 @@
 #include "pin.H"
-#include "Taint.h"
 #include <asm/unistd.h>
 #include <fstream>
 #include <iostream>
@@ -18,6 +17,8 @@ struct range
 
 std::list<struct range> bytesTainted;
 
+#include "TaintTracker.h"
+
 /*
 
 
@@ -25,6 +26,7 @@ std::list<struct range> bytesTainted;
 
  * BASIC UTILITY FUNCTIONS
  */
+
 int usage()
 {
     cerr << "Usage: ./TaintTracker file" << endl;
@@ -50,7 +52,6 @@ void movInst(INS ins){
 void callInst(INS ins){
 
 }
-
 /*
  * END OF BASIC UTILITY FUNCTIONS
  */
@@ -58,10 +59,21 @@ void callInst(INS ins){
 /*
  * TAINT TRACKER FUNCTIONS
  */
-int TaintTracker::addTaint(UINT64, UINT64) {
+int TaintTracker::addTaint(UINT64 start, UINT64 size) {
     // Add basic tainting routine here
+<<<<<<< HEAD
     bytesTainted.push_back(taint);
 
+=======
+    taint.start = start;
+    size = (size > taint_max) ? taint_max : size;
+    taint.end = taint.start + size;
+    bytesTainted.push_back(taint);
+
+    std::cout << "[TAINT]\t\t\tbytes tainted from " << std::hex << "0x"
+              << taint.start << " to 0x" << taint.end << " (via read)"
+              << std::endl;
+>>>>>>> f2be814016fe24aa45e6ac939c93954ca0b48611
     return 0;
 }
 
@@ -72,6 +84,7 @@ int TaintTracker::removeTaint(UINT64, UINT64) {
     return 0;
 }
 
+<<<<<<< HEAD
 bool TaintTracker::checkTaint(UINT64) {
 
     // Returns whether a memory is tainted or not
@@ -85,6 +98,18 @@ bool TaintTracker::checkTaint(UINT64) {
 						break;
 				}
 		}
+=======
+bool TaintTracker::checkTaint(UINT64 addr) {
+    // Returns whether a memory is tainted or not
+
+    list<struct range>::iterator i;
+
+    for(i = bytesTainted.begin(); i != bytesTainted.end(); ++i) {
+        if (addr >= i->start && addr < i->end) {
+            return true;
+        }
+    }
+>>>>>>> f2be814016fe24aa45e6ac939c93954ca0b48611
     return false;
 }
 /*
@@ -92,8 +117,32 @@ bool TaintTracker::checkTaint(UINT64) {
  */
 
 /*
+ * TAINT TRACKER DEBUG FUNCTIONS
+ */
+void TaintTracker::readMem(UINT64 insAddr, std::string insDis, UINT64 memOp)
+{
+    if (taintEngine.checkTaint(memOp)) {
+        std::cout << std::hex << "[READ in 0x" << memOp << "]\t"
+                  << insAddr << ": " << insDis<< std::endl;
+    }
+}
+
+void TaintTracker::writeMem(UINT64 insAddr, std::string insDis, UINT64 memOp)
+{
+    if (taintEngine.checkTaint(memOp)) {
+        std::cout << std::hex << "[WRITE in 0x" << memOp << "]\t"
+                  << insAddr << ": " << insDis << std::endl;
+    }
+}
+
+/*
+ * END OF DEBUG FUNCTIONS
+ */
+
+/*
  * PIN MODULE FUNCTIONS
  */
+<<<<<<< HEAD
 
 VOID getbase(IMG img){
 
@@ -106,11 +155,29 @@ VOID Trace(TRACE trace, VOID *v) {
     for (BBL bbl = TRACE_BblHead(trace); BBL_Valid(bbl); bbl = BBL_Next(bbl)) {
       for ( INS ins = BBL_InsHead(bbl); INS_Valid(ins); ins = INS_Next(ins)) {
             /*
+=======
+void Trace(TRACE trace, VOID *v) {
+    // Instruction Iterator
+    for (BBL bbl = TRACE_BblHead(trace); BBL_Valid(bbl);
+         bbl = BBL_Next(bbl)) {
+        for ( INS ins = BBL_InsHead(bbl); INS_Valid(ins);
+              ins = INS_Next(ins)) {
+
+            //  Temporary handling of instuctions that calls debug functions
+
+            /* TODO:
+>>>>>>> f2be814016fe24aa45e6ac939c93954ca0b48611
              * Here we need to iterate over all the instruction and note
              *  1. All the move instructions handling tainted memory
              *  2. All the cmp intstructions handling tainted memory
              *  3. Call instructions maybe
              */
+<<<<<<< HEAD
+=======
+
+            /*
+            if (INS_Opcode(ins) == XED_ICLASS_CMP) {
+>>>>>>> f2be814016fe24aa45e6ac939c93954ca0b48611
 
             if (INS_Disassemble(ins).find("cmp") != std::string::npos && !isLibraryFunction(INS_Address(ins))) {
               
@@ -139,16 +206,39 @@ VOID Trace(TRACE trace, VOID *v) {
                 IARG_MEMORYOP_EA, 0,
                 IARG_END);
 
+<<<<<<< HEAD
+=======
+                } else {
+
+>>>>>>> f2be814016fe24aa45e6ac939c93954ca0b48611
                 }
+            }
+            */
+            if (INS_MemoryOperandIsRead(ins, 0) && INS_OperandIsReg(ins, 0)){
+                  INS_InsertCall(
+                               ins, IPOINT_BEFORE,(AFUNPTR)taintEngine.readMem,
+                               IARG_ADDRINT, INS_Address(ins),
+                               IARG_PTR, new string(INS_Disassemble(ins)),
+                               IARG_MEMORYOP_EA, 0,
+                               IARG_END);
+            }
+            else if (INS_MemoryOperandIsWritten(ins, 0)){
+                INS_InsertCall(
+                               ins, IPOINT_BEFORE,(AFUNPTR)taintEngine.writeMem,
+                               IARG_ADDRINT, INS_Address(ins),
+                               IARG_PTR, new string(INS_Disassemble(ins)),
+                               IARG_MEMORYOP_EA, 0,
+                               IARG_END);
             }
         }
     }
 }
 
-
-void Syscall_entry(THREADID thread_id, CONTEXT *ctx, SYSCALL_STANDARD std, void *v) {
+void Syscall_entry(THREADID thread_id, CONTEXT *ctx, SYSCALL_STANDARD std,
+                   void *v) {
     if (PIN_GetSyscallNumber(ctx, std) == __NR_read) {
 
+<<<<<<< HEAD
       struct range taint;
 
       taint.start = static_cast<UINT64>((PIN_GetSyscallArgument(ctx, std, 1)));
@@ -164,11 +254,20 @@ void Syscall_entry(THREADID thread_id, CONTEXT *ctx, SYSCALL_STANDARD std, void 
 
 
        /* TODO: Backtrace to check if currently in a library function
+=======
+        UINT64 start = static_cast<UINT64>(PIN_GetSyscallArgument(ctx, std, 1));
+        UINT64 size  = static_cast<UINT64>(PIN_GetSyscallArgument(ctx, std, 2));
+
+        /* TODO: Backtrace to check if currently in a library function
+>>>>>>> f2be814016fe24aa45e6ac939c93954ca0b48611
         * Steps:
-        *  1. Figure out all possible library calls that might call read - avoid obscure ones
-        *  2. Need to find out how to retrive the arguments (shall we keep a track of all calls)
+        *  1. Figure out all possible library calls that might call read
+        *  (avoid obscure ones)
+        *  2. Need to find out how to retrive the arguments
+        *  (shall we keep a track of all calls)
         *  3. Taint only the small chunk of memory
         */
+
         taintEngine.addTaint(start, size);
 
     }
@@ -180,8 +279,12 @@ int main(int argc, char *argv[]) {
     }
 
     PIN_SetSyntaxIntel();
+<<<<<<< HEAD
 	IMG_AddInstrumentFunctio(getbase, 0)
 	PIN_AddSyscallEntryFunction(Syscall_entry, 0);
+=======
+    PIN_AddSyscallEntryFunction(Syscall_entry, 0);
+>>>>>>> f2be814016fe24aa45e6ac939c93954ca0b48611
     TRACE_AddInstrumentFunction(Trace, 0);
  /*
   * NEVER RETURNS
