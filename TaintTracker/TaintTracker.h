@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 #include <list>
+#include <stack>
 
 struct range {
     UINT64 start;
@@ -22,6 +23,11 @@ public:
     // Debug Functions
     static void readMem(UINT64, std::string, UINT64);
     static void writeMem(UINT64, std::string, UINT64);
+    static void callFunction(UINT64, std::string, UINT64);
+    static void retFunction(UINT64, std::string);
+
+    //TODO: make this private maybe?
+    std::stack <UINT64> callStack;
 private:
     // We will have the taint variables here
     // Maximum taint size
@@ -29,5 +35,3 @@ private:
     range taint;
     std::list<struct range> bytesTainted;
 };
-
-extern TaintTracker taintEngine(256);
