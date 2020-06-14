@@ -5,6 +5,7 @@
 #include <list>
 
 #include "TaintTracker.h"
+TaintTracker taintEngine(256);
 
 /*
  * BASIC UTILITY FUNCTIONS
