@@ -1,24 +1,50 @@
 #include "pin.H"
-#include <asm/unistd.h>
-#include <fstream>
-#include <iostream>
-#include <list>
-
 #include "TaintTracker.h"
 TaintTracker taintEngine(256);
+<<<<<<< HEAD
+=======
+
+>>>>>>> 4600b921aa57d8a760d21e6d60fa36e24828baae
 /*
  * BASIC UTILITY FUNCTIONS
  */
+#define LIBC_BASE 0x700000000000
 
 int usage()
 {
-    cerr << "Not Properly Used" << endl;
+    std::cerr << "Not Properly Used" << std::endl;
     return -1;
 }
 
-bool isLibraryFunction() {
-    // TODO : Figure out to do this
-    return true;
+bool isLibraryFunction(UINT64 addr) {
+    // TODO : Temporary hack
+    // Figure out to do this
+
+    // We can get the name of the fucntion like this
+    // if its any help in figuring this out
+   
+    //string name = RTN_FindNameByAddress(addr);
+
+    if (addr > LIBC_BASE) {
+        return true;
+    }
+    return false;
+}
+
+// TODO: make sure dynamic addreses can be used
+// or if we need to rebase the addresses
+void showstack(stack <function> s)
+{
+    std::cout << "[Function Backtrace]" << std::endl;
+    std::cout << "--------------------";
+    while (!s.empty())
+    {
+        std::cout << "\n0x" << s.top().address << " " << s.top().name;
+        s.pop();
+    }
+    std::cout << '\n';
+    std::cout << "--------------------" << std::endl;
+    std::cout << "[  END  BACKTRACE  ]" << std::endl;
 }
 /*
  * END OF BASIC UTILITY FUNCTIONS
@@ -40,7 +66,7 @@ int TaintTracker::addTaint(UINT64 start, UINT64 size) {
     return 0;
 }
 
-int TaintTracker::removeTaint(UINT64, UINT64) {
+int TaintTracker::removeTaint(UINT64 start, UINT64 size) {
     // Removes Taint
     return 0;
 }
@@ -64,11 +90,34 @@ bool TaintTracker::checkTaint(UINT64 addr) {
 /*
  * TAINT TRACKER DEBUG FUNCTIONS
  */
+// TODO: Code for reference, clean up later
+// void TaintTracker::callFunctionReg(UINT64 insAddr, std::string insDis, REG reg, CONTEXT * ctx)
+// {
+//     std::cout << "[CALL] at 0x" << insAddr << "] " << insDis << " calls 0x" << static_cast<UINT64>((PIN_GetContextReg(ctx, REG_FullRegName(reg))))<< std::endl;
+// }
+
+void TaintTracker::callFunction(UINT64 insAddr, std::string insDis, UINT64 addr)
+{
+    //std::cout << "[CALL] at 0x" << insAddr << "] " << insDis << " calls 0x" << addr << std::endl;
+    function func;
+    func.address = addr;
+    func.name = RTN_FindNameByAddress(addr);
+    taintEngine.callStack.push(func);
+}
+
+void TaintTracker::retFunction(UINT64 insAddr, std::string insDis)
+{
+    //UINT64 addr = taintEngine.callStack.top();
+    //std::cout << "[RETURN] " << insDis << "popped 0x" << addr << endl;
+    taintEngine.callStack.pop();
+}
+
 void TaintTracker::readMem(UINT64 insAddr, std::string insDis, UINT64 memOp)
 {
     if (taintEngine.checkTaint(memOp)) {
         std::cout << std::hex << "[READ in 0x" << memOp << "]\t"
                   << insAddr << ": " << insDis<< std::endl;
+        showstack(taintEngine.callStack);
     }
 }
 
@@ -77,6 +126,7 @@ void TaintTracker::writeMem(UINT64 insAddr, std::string insDis, UINT64 memOp)
     if (taintEngine.checkTaint(memOp)) {
         std::cout << std::hex << "[WRITE in 0x" << memOp << "]\t"
                   << insAddr << ": " << insDis << std::endl;
+        showstack(taintEngine.callStack);
     }
 }
 
@@ -111,8 +161,46 @@ void Trace(TRACE trace, VOID *v) {
                 }
             }
             */
+
+            // XXX Gives cleaner output, but implementation is incorrect
+            if (isLibraryFunction(INS_Address(ins))) {
+                continue;
+            }
+
+            if (INS_Disassemble(ins).rfind("call") == 0) {
+                // TODO: Code for reference, clean up later
+                // if (INS_OperandIsReg(ins, 0)) {
+                // INS_InsertCall(
+                //                ins, IPOINT_BEFORE,(AFUNPTR)taintEngine.callFunctionReg,
+                //                IARG_ADDRINT, INS_Address(ins),
+                //                IARG_PTR, new string(INS_Disassemble(ins)),
+                //                IARG_UINT64, INS_OperandReg(ins, 0),
+                //                IARG_CONTEXT, IARG_END);
+                // } else if (INS_OperandIsMemory(ins, 0)) {
+                // INS_InsertCall(
+                //                ins, IPOINT_BEFORE,(AFUNPTR)taintEngine.callFunctionImm,
+                //                IARG_ADDRINT, INS_Address(ins),
+                //                IARG_PTR, new string(INS_Disassemble(ins)),
+                //                IARG_MEMORYOP_EA, 0,
+                //                IARG_END);
+                // } else {
+                INS_InsertCall(
+                               ins, IPOINT_BEFORE,(AFUNPTR)taintEngine.callFunction,
+                               IARG_ADDRINT, INS_Address(ins),
+                               IARG_PTR, new string(INS_Disassemble(ins)),
+                               IARG_BRANCH_TARGET_ADDR,
+                               IARG_END);
+                //}
+            }
+            if (INS_Disassemble(ins).rfind("ret") == 0 && !isLibraryFunction(INS_Address(ins))) {
+                INS_InsertCall(
+                               ins, IPOINT_BEFORE,(AFUNPTR)taintEngine.retFunction,
+                               IARG_ADDRINT, INS_Address(ins),
+                               IARG_PTR, new string(INS_Disassemble(ins)),
+                               IARG_END);
+            }
             if (INS_MemoryOperandIsRead(ins, 0) && INS_OperandIsReg(ins, 0)){
-                  INS_InsertCall(
+                INS_InsertCall(
                                ins, IPOINT_BEFORE,(AFUNPTR)taintEngine.readMem,
                                IARG_ADDRINT, INS_Address(ins),
                                IARG_PTR, new string(INS_Disassemble(ins)),
@@ -152,6 +240,9 @@ void Syscall_entry(THREADID thread_id, CONTEXT *ctx, SYSCALL_STANDARD std,
 }
 
 int main(int argc, char *argv[]) {
+    // For function names
+    PIN_InitSymbols();
+
     if (PIN_Init(argc, argv)) {
         return usage();
     }
