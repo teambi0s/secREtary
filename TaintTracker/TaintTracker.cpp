@@ -9,13 +9,19 @@ TaintTracker taintEngine(256);
 
 int usage()
 {
-    cerr << "Not Properly Used" << endl;
+    std::cerr << "Not Properly Used" << std::endl;
     return -1;
 }
 
 bool isLibraryFunction(UINT64 addr) {
     // TODO : Temporary hack
     // Figure out to do this
+
+    // We can get the name of the fucntion like this
+    // if its any help in figuring this out
+   
+    //string name = RTN_FindNameByAddress(addr);
+
     if (addr > LIBC_BASE) {
         return true;
     }
@@ -26,7 +32,7 @@ bool isLibraryFunction(UINT64 addr) {
 // or if we need to rebase the addresses
 void showstack(stack <function> s)
 {
-    std::cout << "[Function Backtrace]" << endl;
+    std::cout << "[Function Backtrace]" << std::endl;
     std::cout << "--------------------";
     while (!s.empty())
     {
@@ -34,8 +40,8 @@ void showstack(stack <function> s)
         s.pop();
     }
     std::cout << '\n';
-    std::cout << "--------------------" << endl;
-    std::cout << "[  END  BACKTRACE  ]" << endl;
+    std::cout << "--------------------" << std::endl;
+    std::cout << "[  END  BACKTRACE  ]" << std::endl;
 }
 /*
  * END OF BASIC UTILITY FUNCTIONS
@@ -57,7 +63,7 @@ int TaintTracker::addTaint(UINT64 start, UINT64 size) {
     return 0;
 }
 
-int TaintTracker::removeTaint(UINT64, UINT64) {
+int TaintTracker::removeTaint(UINT64 start, UINT64 size) {
     // Removes Taint
     return 0;
 }
