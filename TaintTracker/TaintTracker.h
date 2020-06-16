@@ -30,4 +30,5 @@ private:
     std::list<struct range> bytesTainted;
 };
 
-extern TaintTracker taintEngine(256);
+
+//extern TaintTracker taintEngine(256);
