@@ -10,6 +10,11 @@ struct range {
     UINT64 end;
 };
 
+struct function {
+    UINT64 address;
+    string name;
+};
+
 class TaintTracker {
 public:
     // Constructor and Destructor
@@ -27,7 +32,7 @@ public:
     static void retFunction(UINT64, std::string);
 
     //TODO: make this private maybe?
-    std::stack <UINT64> callStack;
+    std::stack <function> callStack;
 private:
     // We will have the taint variables here
     // Maximum taint size

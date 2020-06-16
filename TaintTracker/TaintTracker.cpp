@@ -9,32 +9,39 @@ TaintTracker taintEngine(256);
 
 int usage()
 {
-    cerr << "Not Properly Used" << endl;
+    std::cerr << "Not Properly Used" << std::endl;
     return -1;
 }
 
 bool isLibraryFunction(UINT64 addr) {
     // TODO : Temporary hack
     // Figure out to do this
+
+    // We can get the name of the fucntion like this
+    // if its any help in figuring this out
+   
+    //string name = RTN_FindNameByAddress(addr);
+
     if (addr > LIBC_BASE) {
         return true;
     }
     return false;
 }
 
-//TODO: get names of functions if available
-void showstack(stack <UINT64> s)
+// TODO: make sure dynamic addreses can be used
+// or if we need to rebase the addresses
+void showstack(stack <function> s)
 {
-    std::cout << "[Function Backtrace]" << endl;
+    std::cout << "[Function Backtrace]" << std::endl;
     std::cout << "--------------------";
     while (!s.empty())
     {
-        std::cout << "\nsub_" << s.top();
+        std::cout << "\n0x" << s.top().address << " " << s.top().name;
         s.pop();
     }
     std::cout << '\n';
-    std::cout << "--------------------" << endl;
-    std::cout << "[  END  BACKTRACE  ]" << endl;
+    std::cout << "--------------------" << std::endl;
+    std::cout << "[  END  BACKTRACE  ]" << std::endl;
 }
 /*
  * END OF BASIC UTILITY FUNCTIONS
@@ -56,7 +63,7 @@ int TaintTracker::addTaint(UINT64 start, UINT64 size) {
     return 0;
 }
 
-int TaintTracker::removeTaint(UINT64, UINT64) {
+int TaintTracker::removeTaint(UINT64 start, UINT64 size) {
     // Removes Taint
     return 0;
 }
@@ -89,7 +96,10 @@ bool TaintTracker::checkTaint(UINT64 addr) {
 void TaintTracker::callFunction(UINT64 insAddr, std::string insDis, UINT64 addr)
 {
     //std::cout << "[CALL] at 0x" << insAddr << "] " << insDis << " calls 0x" << addr << std::endl;
-    taintEngine.callStack.push(addr);
+    function func;
+    func.address = addr;
+    func.name = RTN_FindNameByAddress(addr);
+    taintEngine.callStack.push(func);
 }
 
 void TaintTracker::retFunction(UINT64 insAddr, std::string insDis)
@@ -230,6 +240,9 @@ void Syscall_entry(THREADID thread_id, CONTEXT *ctx, SYSCALL_STANDARD std,
 }
 
 int main(int argc, char *argv[]) {
+    // For function names
+    PIN_InitSymbols();
+
     if (PIN_Init(argc, argv)) {
         return usage();
     }
