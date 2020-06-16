@@ -5,6 +5,7 @@
 *.exe
 *.a
 *.lib
+*.log
 
 # Editor Trash 
 *.swp
