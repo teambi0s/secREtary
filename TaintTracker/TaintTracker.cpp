@@ -1,10 +1,10 @@
 #include "pin.H"
 #include "TaintTracker.h"
 TaintTracker taintEngine(256);
-<<<<<<< HEAD
-=======
+//<<<<<<< HEAD
+//=======
 
->>>>>>> 4600b921aa57d8a760d21e6d60fa36e24828baae
+//>>>>>>> 4600b921aa57d8a760d21e6d60fa36e24828baae
 /*
  * BASIC UTILITY FUNCTIONS
  */
@@ -14,6 +14,16 @@ int usage()
 {
     std::cerr << "Not Properly Used" << std::endl;
     return -1;
+}
+
+VOID Image(IMG img, VOID *v){
+    //printf ("   image_lowAddress    =  \n",image_lowAddress);
+    bool isMainExecutable = IMG_IsMainExecutable(img);
+    if (isMainExecutable == true){
+            ADDRINT image_lowAddress   = IMG_LowAddress(img);
+            printf (" [ + ] Main starts at address    = 0x%zx \n", image_lowAddress);
+    }
+
 }
 
 bool isLibraryFunction(UINT64 addr) {
@@ -130,67 +140,208 @@ void TaintTracker::writeMem(UINT64 insAddr, std::string insDis, UINT64 memOp)
     }
 }
 
+
+
+
+
+/*
+*  CMP FUNCTIONS
+*/
+VOID cmpRegs(UINT64 insAddr, std::string insDis, REG reg1, REG reg2, CONTEXT * ctx) {
+	char buffer1[100];
+	char buffer2[100];
+		
+	if (!REG_valid(reg1) || !REG_valid(reg1)) {
+			cout << "[BUG] Invalid registers!! - please report" << endl;
+			return ;
+	}
+	
+    cout << "Cmp at 0x" << insAddr << " ]\t " << insDis << endl;
+    sprintf(buffer1, "[ Tainted %s ] :\t 0x%016lx { String display coming soon }\n", REG_StringShort(REG_FullRegName(reg1)).c_str(), static_cast<UINT64>((PIN_GetContextReg(ctx, REG_FullRegName(reg1)))));
+    cout << buffer1;
+    sprintf(buffer2, "[ Operand %s ] :\t 0x%016lx { String display coming soon }\n", REG_StringShort(REG_FullRegName(reg2)).c_str(), static_cast<UINT64>((PIN_GetContextReg(ctx, REG_FullRegName(reg2)))));	
+    cout << buffer2 << endl;
+}
+
+VOID cmpRegImm(UINT64 insAddr, std::string insDis, REG reg1, UINT64 imm, CONTEXT * ctx) {
+	char buffer[100];
+		cout << "[Tainted Cmp(Register with Immediate) at 0x" << insAddr << " ]\t :" << insDis << endl;
+		    sprintf(buffer, "[ %s ] :\t 0x%016lx { String display coming soon }\n", REG_StringShort(REG_FullRegName(reg1)).c_str(), static_cast<UINT64>((PIN_GetContextReg(ctx, REG_FullRegName(reg1)))));
+			cout << buffer;
+			// TODO : Handle immediate values better
+			cout << "[Immediate Value] : " << imm << endl << endl;
+}
+
+
+VOID cmpMemImm(UINT64 insAddr, std::string insDis, UINT64 memOp, UINT32 size, UINT64 imm, CONTEXT * ctx) {
+	//UINT64 addr = memOp;
+	//list<UINT64>::iterator i;
+	//char * data_region;
+
+	//for (i = addressTainted.begin(); i != addressTainted.end(); i++) {
+	//if (addr == *i){
+	cout << "[ Cmp(Memory with Immediate) at 0x" << insAddr << "]\t :" << insDis << endl;
+	cout << "[Compared Memory] : " << endl;
+    //data_region = new char[size];
+
+	//PIN_SafeCopy(data_region, (void *)addr, size);
+	//dump_data(addr, size, data_region);
+
+	cout << "[Immediate Value] : " << imm << endl << endl;
+	//delete data_region;
+	//}
+    //}
+}
+
+VOID cmpMemReg(UINT64 insAddr, std::string insDis, UINT64 memOp, UINT32 size, REG reg1, CONTEXT * ctx) {
+	//UINT64 addr = memOp;
+	//bool isMemoryTainted = false;
+	//bool isRegTainted = false;
+	//list<UINT64>::iterator i;
+	//char * data_region;
+	char buffer[100];
+
+	//for (i = addressTainted.begin(); i != addressTainted.end(); i++) { 
+	//	if (addr == *i){
+	//		isMemoryTainted = true;	
+	//	}
+	//}
+	//if (checkAlreadyRegTainted(reg1)) {
+	//		isRegTainted = true;
+	//}
+	//if (isRegTainted || isMemoryTainted) {
+	cout << "[Cmp(Memory with Register) at  0x" << insAddr << "]\t : " << insDis << endl;
+	sprintf(buffer, "[ %s %s ] :\t 0x%016lx { String display coming soon }\n", "Tainted" , REG_StringShort(REG_FullRegName(reg1)).c_str(), static_cast<UINT64>((PIN_GetContextReg(ctx, REG_FullRegName(reg1)))));
+	//sprintf(buffer, "[ %s %s ] :\t 0x%016lx { String display coming soon }\n", ((isRegTainted) ? "Tainted" : "Untainted" ) ,REG_StringShort(REG_FullRegName(reg1)).c_str(), static_cast<UINT64>((PIN_GetContextReg(ctx, REG_FullRegName(reg1)))));
+	
+    //	data_region = new char[size];
+
+	cout << "[" << "Tainted" << "Memory] : " << endl;
+		
+	//	PIN_SafeCopy(data_region, (void *)addr, size);
+	//	dump_data(addr, size, data_region);
+		
+
+	//	delete data_region;
+	//}
+}
+
+
+
+
+
 /*
  * END OF DEBUG FUNCTIONS
  */
 
+
 /*
  * PIN MODULE FUNCTIONS
  */
+
+
 void Trace(TRACE trace, VOID *v) {
     // Instruction Iterator
-    for (BBL bbl = TRACE_BblHead(trace); BBL_Valid(bbl);
+    for (BBL bbl = TRACE_BblHead(trace); BBL_Valid(bbl);    
          bbl = BBL_Next(bbl)) {
         for ( INS ins = BBL_InsHead(bbl); INS_Valid(ins);
               ins = INS_Next(ins)) {
 
-            //  Temporary handling of instuctions that calls debug functions
-
-            /* TODO:
-             * Here we need to iterate over all the instruction and note
-             *  1. All the move instructions handling tainted memory
-             *  2. All the cmp intstructions handling tainted memory
-             *  3. Call instructions maybe
-             */
-
-            /*
-            if (INS_Opcode(ins) == XED_ICLASS_CMP) {
-            } else {
-                if (INS_Opcode(ins) == XED_ICLASS_MOV) {
-                } else {
-                }
-            }
-            */
-
-            // XXX Gives cleaner output, but implementation is incorrect
             if (isLibraryFunction(INS_Address(ins))) {
                 continue;
             }
+            if (INS_Disassemble(ins).rfind("cmp") == 0 && !isLibraryFunction(INS_Address(ins))) {
+                
+               			if (INS_OperandIsReg(ins, 0) && INS_OperandIsReg(ins, 1)) {
+								    INS_InsertCall(ins, IPOINT_AFTER, (AFUNPTR)cmpRegs,
+									            IARG_ADDRINT, INS_Address(ins),
+												IARG_PTR, new string(INS_Disassemble(ins)),
+												IARG_UINT64, INS_OperandReg(ins, 0),
+												IARG_UINT64, INS_OperandReg(ins, 1),
+												IARG_CONTEXT, IARG_END);			
+								}
+						else if (INS_OperandIsReg(ins, 0) && INS_OperandIsImmediate(ins, 1)) {
+									INS_InsertCall(ins, IPOINT_AFTER, (AFUNPTR)cmpRegImm,
+												IARG_ADDRINT, INS_Address(ins),
+												IARG_PTR, new string(INS_Disassemble(ins)),
+												IARG_UINT64, INS_OperandReg(ins, 0),
+												IARG_UINT64, INS_OperandImmediate(ins, 1),
+												IARG_CONTEXT, IARG_END);			
+						}
+                
+						/*else if (INS_hasKnownMemorySize(ins)) {
+											INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)cmpMemImm,
+														IARG_ADDRINT, INS_Address(ins),
+														IARG_PTR, new string(INS_Disassemble(ins)),
+														IARG_MEMORYOP_EA, 0,
+														IARG_MEMORYREAD_SIZE,
+														IARG_UINT64, INS_OperandImmediate(ins, 1),
+														IARG_CONTEXT, IARG_END);			
+									}
+						else {
+											INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)cmpMemImm,
+														IARG_ADDRINT, INS_Address(ins),
+														IARG_PTR, new string(INS_Disassemble(ins)),
+														IARG_MEMORYOP_EA, 0,
+														IARG_UINT32, 16,
+														IARG_UINT64, INS_OperandImmediate(ins, 1),
+														IARG_CONTEXT, IARG_END);			
 
+						} */
+						else if (INS_OperandIsMemory(ins, 0) && INS_OperandIsReg(ins, 1)) {
+									if (INS_hasKnownMemorySize(ins)) {
+											INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)cmpMemReg,
+														IARG_ADDRINT, INS_Address(ins),
+														IARG_PTR, new string(INS_Disassemble(ins)),
+														IARG_MEMORYOP_EA, 0,
+														IARG_MEMORYREAD_SIZE,
+														IARG_UINT64, INS_OperandReg(ins, 1),
+														IARG_CONTEXT, IARG_END);			
+									}
+									else {
+											INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)cmpMemReg,
+														IARG_ADDRINT, INS_Address(ins),
+														IARG_PTR, new string(INS_Disassemble(ins)),
+														IARG_MEMORYOP_EA, 0,
+														IARG_UINT32, 16,
+														IARG_UINT64, INS_OperandReg(ins, 1),
+														IARG_CONTEXT, IARG_END);			
+
+									}
+						        }
+						else if (INS_OperandIsMemory(ins, 1) && INS_OperandIsReg(ins, 0)) {
+									if (INS_hasKnownMemorySize(ins)) {
+											INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)cmpMemReg,
+														IARG_ADDRINT, INS_Address(ins),
+														IARG_PTR, new string(INS_Disassemble(ins)),
+														IARG_MEMORYOP_EA, 0,
+														IARG_MEMORYREAD_SIZE,
+														IARG_UINT64, INS_OperandReg(ins, 0),
+														IARG_CONTEXT, IARG_END);			
+									}
+									else {
+											INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)cmpMemReg,
+														IARG_ADDRINT, INS_Address(ins),
+														IARG_PTR, new string(INS_Disassemble(ins)),
+														IARG_MEMORYOP_EA, 0,
+														IARG_UINT32, 16,
+														IARG_UINT64, INS_OperandReg(ins, 0),
+														IARG_CONTEXT, IARG_END);			
+
+									}
+						    }
+							else {
+									cout << "[BUG] Undefined type of cmp statement : " << INS_Disassemble(ins) << " : please report" << endl;
+								}
+            }    
             if (INS_Disassemble(ins).rfind("call") == 0) {
-                // TODO: Code for reference, clean up later
-                // if (INS_OperandIsReg(ins, 0)) {
-                // INS_InsertCall(
-                //                ins, IPOINT_BEFORE,(AFUNPTR)taintEngine.callFunctionReg,
-                //                IARG_ADDRINT, INS_Address(ins),
-                //                IARG_PTR, new string(INS_Disassemble(ins)),
-                //                IARG_UINT64, INS_OperandReg(ins, 0),
-                //                IARG_CONTEXT, IARG_END);
-                // } else if (INS_OperandIsMemory(ins, 0)) {
-                // INS_InsertCall(
-                //                ins, IPOINT_BEFORE,(AFUNPTR)taintEngine.callFunctionImm,
-                //                IARG_ADDRINT, INS_Address(ins),
-                //                IARG_PTR, new string(INS_Disassemble(ins)),
-                //                IARG_MEMORYOP_EA, 0,
-                //                IARG_END);
-                // } else {
+
                 INS_InsertCall(
                                ins, IPOINT_BEFORE,(AFUNPTR)taintEngine.callFunction,
                                IARG_ADDRINT, INS_Address(ins),
                                IARG_PTR, new string(INS_Disassemble(ins)),
                                IARG_BRANCH_TARGET_ADDR,
                                IARG_END);
-                //}
             }
             if (INS_Disassemble(ins).rfind("ret") == 0 && !isLibraryFunction(INS_Address(ins))) {
                 INS_InsertCall(
@@ -248,6 +399,7 @@ int main(int argc, char *argv[]) {
     }
 
     PIN_SetSyntaxIntel();
+    IMG_AddInstrumentFunction(Image, 0);
     PIN_AddSyscallEntryFunction(Syscall_entry, 0);
     TRACE_AddInstrumentFunction(Trace, 0);
 
@@ -255,6 +407,3 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
-/*
- * END OF PIN MODULE FUNCTIONS
- */
