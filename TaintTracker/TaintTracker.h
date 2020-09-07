@@ -24,7 +24,7 @@ public:
     int addTaint(UINT64, UINT64);
     int removeTaint(UINT64, UINT64);
     bool checkTaint(UINT64);
-
+    static void cmpFunction(UINT64, std::string);
     // Debug Functions
     static void readMem(UINT64, std::string, UINT64);
     static void writeMem(UINT64, std::string, UINT64);
@@ -40,3 +40,9 @@ private:
     range taint;
     std::list<struct range> bytesTainted;
 };
+//<<<<<<< HEAD
+
+
+//extern TaintTracker taintEngine(256);
+//=======
+//>>>>>>> 4600b921aa57d8a760d21e6d60fa36e24828baae
