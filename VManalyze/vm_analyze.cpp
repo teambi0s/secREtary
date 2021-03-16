@@ -11,8 +11,18 @@ using std::endl;
 
 #define LIBC_BASE 0x700000000000
 
+std::vector<int> switch_jmps;
 std::vector<int> jmp_ins;
 ADDRINT image_base;
+
+VOID printSwitch(ADDRINT ip, CONTEXT *ctxt){ 
+    ADDRINT val;
+    PIN_GetContextRegval(ctxt, LEVEL_BASE::REG_RAX, reinterpret_cast<UINT8*>(&val));
+    val = val - image_base;
+    if (val > 50){
+        switch_jmps.push_back(val);
+    }
+}
 
 VOID Trace(TRACE trace, VOID *v)
 {
@@ -26,6 +36,7 @@ VOID Trace(TRACE trace, VOID *v)
         
         // Here we fetch every block and disassemble the tail instruction 
         if((INS_Disassemble(tail).rfind("jmp rax") == 0) && (adr < LIBC_BASE)){
+            INS_InsertPredicatedCall(tail,IPOINT_BEFORE,(AFUNPTR)printSwitch,IARG_INST_PTR,IARG_CONST_CONTEXT,IARG_END);
             jmp_ins.push_back((adr - image_base));
         }
     }
@@ -44,7 +55,21 @@ VOID Image(IMG img, VOID *v){
 
 VOID Fini(INT32 code, VOID *v)
 {
-    printf ("[ + ] Possible VM switch case found at offset : 0x%x \n", jmp_ins.rbegin()[1]);
+    std::map<int, int> Switch_offsets;
+    
+    printf ("[+] VM switch case found at offset : 0x%x \n", jmp_ins.rbegin()[1]);
+    printf ("[+] Number of VM instructions executed : 0x%lx \n", switch_jmps.size());
+    for (int i = 0; switch_jmps[i]; i++) { 
+        if (Switch_offsets.find(switch_jmps[i]) == Switch_offsets.end()) { 
+            Switch_offsets[switch_jmps[i]] = 1; 
+        }  
+        else { 
+            Switch_offsets[switch_jmps[i]]++; 
+        } 
+    }
+    for (auto& it : Switch_offsets) { 
+        printf ("[+] Number of times switch case offset 0%x was hit -> 0x%d\n",it.first,it.second);
+    } 
 }
 
 INT32 Usage()

@@ -1,4 +1,4 @@
-PIN_ROOT = ../pin/
+PIN_ROOT = ../pin
 ifneq ("$(PIN_ROOT)", "")
 	CONFIG_ROOT := $(PIN_ROOT)/source/tools/Config
 	include $(CONFIG_ROOT)/makefile.config
@@ -12,8 +12,8 @@ ifeq ("$(PIN_ROOT)", "")
  # PIN_ROOT has to point the root directory of pin-3.0-76991-gcc-linux
 	$(error PIN_ROOT variable is not set)
 endif
-	$(MAKE) TARGET=intel64 obj-intel64/vmanalyze.so
-	mv obj-intel64/vmanalyze.so .
+	$(MAKE) TARGET=intel64 obj-intel64/vm_analyze.so
+	mv obj-intel64/vm_analyze.so .
 
 clean:
-	rm -rf obj-intel64
+	rm -rf obj-intel64 vm_analyze.so
