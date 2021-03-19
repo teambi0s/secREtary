@@ -15,7 +15,6 @@ bool isExit = 1;
 bool isLib = 0;
 
 ADDRINT image_base;
-std::vector<string> calls_list;
 std::vector<Func> Func_list;
 std::map<string, int> countMap;
 
@@ -58,7 +57,7 @@ const string *Target2String(ADDRINT target)
 }
 
 VOID do_call(const string *s,ADDRINT target)
-{
+{   
     // Here we check for _Exit because that's the last call happening before the binary teminates.
     if (s->rfind("__libc_start_main") == 0){
         isMain = 1;
@@ -67,11 +66,35 @@ VOID do_call(const string *s,ADDRINT target)
         isExit = 0;
     }
     if(isMain && isExit){
-        calls_list.push_back(*s);
         if(target > LIBC_BASE){
             isLib = 1;
         }
-        Func_list.push_back({s->c_str(),(target - image_base),1,isLib});
+        else {
+            isLib = 0;
+        }
+        for (auto &itr : Func_list){
+            if (itr.name == s->c_str()){
+                itr.count++;
+                return ;
+            }
+        }
+        switch (s->c_str()[0])
+        {
+        case '.':
+            break;
+        case '_':
+            break;
+        case '$':
+            break;
+        case '(':
+            break;
+        case '#':
+            break;
+        case '@':
+            break;
+        default:
+            Func_list.push_back({s->c_str(),(target - image_base),1,isLib});
+        }
     }
 }
 
@@ -124,49 +147,14 @@ VOID Trace(TRACE trace, VOID *v)
 }
 
 VOID Fini(INT32 code, VOID *v)
-{
-    string ser;
-    for(unsigned int i = 0; i < calls_list.size();i++)
-    {
-        ser = calls_list[i];
-        
-        //Switch cases for parsing the list we have 
-        switch (ser[0])
-        {
-        case '.':
-            break;
-        case '_':
-            break;
-        case '$':
-            break;
-        case '(':
-            break;
-        case '#':
-            break;
-        case '@':
-            break;
-        default:
-            auto result = countMap.insert(std::pair<string, int>(ser, 1));
-	        if (result.second == false)
-	            result.first->second++;
-            break;
-        }
-    }
+{   
     printf("[+] Analysis Complete\n");
     printf ("[+] Image starts at address    = 0x%zx \n", image_base);
-    if ( std::find(calls_list.begin(), calls_list.end(), "ptrace@plt") != calls_list.end() ) 
-    {
-        printf("[+] PTRACE detected");
-    }
     printf("[+] Function call details\n");
-    printf("%-40s%-25s%-5s\n", "Function Name", "hitCount", "Address");
-    for (auto & elem : countMap){
-    // If frequency count is greater than 1 then its a duplicate element
-	if (elem.second >= 1){
-        printf("%-40s%-25d%-5s\n", elem.first.c_str(), elem.second, "Address");
+    printf("%-40s%-25s%-20s%-10s\n", "Function Name", "hitCount", "Offset" , "isLibrary");
+    for (auto & itr : Func_list){
+         printf("%-40s%-25d0x%-20lx%-10d\n", itr.name.c_str(), itr.count, itr.address , itr.lib);
 	}
-    }
-
 }
 
 int  main(int argc, char *argv[])
