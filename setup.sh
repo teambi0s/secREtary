@@ -32,7 +32,7 @@ while getopts "sc" opt ;do
 	case "${opt}" in
 		s)
 			echo "[+] Installing Intel PIN"
-			URL=https://software.intel.com/sites/landingpage/pintool/downloads/pin-3.7-97619-g0d0c92f4f-gcc-linux.tar.gz
+			URL=https://software.intel.com/sites/landingpage/pintool/downloads/pin-3.18-98332-gaebd7b1e6-gcc-linux.tar.gz
 
 			wget $URL -O pin.tar.gz 
 			tar -xvf pin.tar.gz
