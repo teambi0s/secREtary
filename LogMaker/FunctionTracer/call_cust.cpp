@@ -10,8 +10,13 @@ using std::ios;
 using std::string;
 using std::stringstream;
 
+bool isMain = 0;
+bool isExit = 1;
+bool isLib = 0;
 
+ADDRINT image_base;
 std::vector<string> calls_list;
+std::vector<Func> Func_list;
 std::map<string, int> countMap;
 
 string invalid = "$";
@@ -23,12 +28,25 @@ INT32 Usage()
     return -1;
 }
 
+VOID Image(IMG img, VOID *v){
+    
+    bool isMainExecutable = IMG_IsMainExecutable(img);
+    
+    if (isMainExecutable == true){
+            image_base   = IMG_LowAddress(img);
+    }
+}
+
 //Convert address to function name
 
 const string *Target2String(ADDRINT target)
 {
     stringstream tmp_stream;
     string name = RTN_FindNameByAddress(target);
+
+    if (name == ".text"){
+        name = "";
+    }
     if (name == ""){
         name = "sub_";
         tmp_stream << name << std::hex << target;
@@ -39,10 +57,22 @@ const string *Target2String(ADDRINT target)
         return new string(name);
 }
 
-VOID do_call(const string *s)
+VOID do_call(const string *s,ADDRINT target)
 {
     // Here we check for _Exit because that's the last call happening before the binary teminates.
-    calls_list.push_back(*s);
+    if (s->rfind("__libc_start_main") == 0){
+        isMain = 1;
+    }
+    if ((s->rfind("exit") == 0) || s->rfind("_exit") == 0){
+        isExit = 0;
+    }
+    if(isMain && isExit){
+        calls_list.push_back(*s);
+        if(target > LIBC_BASE){
+            isLib = 1;
+        }
+        Func_list.push_back({s->c_str(),(target - image_base),1,isLib});
+    }
 }
 
 VOID  do_call_indirect(ADDRINT target, BOOL taken)
@@ -50,8 +80,9 @@ VOID  do_call_indirect(ADDRINT target, BOOL taken)
     if( !taken ) return;
 
     const string *s = Target2String(target);
-    do_call(s);
-    
+
+    do_call(s,target);
+
     if (s != &invalid)
         delete s;
 }
@@ -68,11 +99,11 @@ VOID Trace(TRACE trace, VOID *v)
             {
                 ADDRINT target = INS_DirectControlFlowTargetAddress(tail);
                 INS_InsertPredicatedCall(tail, IPOINT_BEFORE, AFUNPTR(do_call),
-                                            IARG_PTR,Target2String(target),IARG_END);
+                                            IARG_PTR,Target2String(target),IARG_BRANCH_TARGET_ADDR,IARG_END);
             }
             else
             {
-            INS_InsertCall(tail, IPOINT_BEFORE, AFUNPTR(do_call_indirect),
+                INS_InsertCall(tail, IPOINT_BEFORE, AFUNPTR(do_call_indirect),
                             IARG_BRANCH_TARGET_ADDR, IARG_BRANCH_TAKEN, IARG_END);
             }
         }
@@ -122,12 +153,13 @@ VOID Fini(INT32 code, VOID *v)
         }
     }
     printf("[+] Analysis Complete\n");
+    printf ("[+] Image starts at address    = 0x%zx \n", image_base);
     if ( std::find(calls_list.begin(), calls_list.end(), "ptrace@plt") != calls_list.end() ) 
     {
         printf("[+] PTRACE detected");
     }
     printf("[+] Function call details\n");
-    printf("%-40s%-25s%-5s\n", "Function Name", "Times Called", "Address");
+    printf("%-40s%-25s%-5s\n", "Function Name", "hitCount", "Address");
     for (auto & elem : countMap){
     // If frequency count is greater than 1 then its a duplicate element
 	if (elem.second >= 1){
@@ -146,7 +178,7 @@ int  main(int argc, char *argv[])
     {
         return Usage();
     }
-    
+    IMG_AddInstrumentFunction(Image, 0);
     TRACE_AddInstrumentFunction(Trace, 0);
     PIN_AddFiniFunction(Fini, 0);
 
