@@ -1,4 +1,4 @@
-PIN_ROOT = ../../../pin/
+PIN_ROOT = ../pin/
 ifneq ("$(PIN_ROOT)", "")
 	CONFIG_ROOT := $(PIN_ROOT)/source/tools/Config
 	include $(CONFIG_ROOT)/makefile.config

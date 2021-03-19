@@ -1,11 +1,13 @@
 #include "pin.H"
 using std::string;
 
-struct Function
+#define LIBC_BASE 0x700000000000
+
+struct Func
 {
     string name;
     ADDRINT address;
     int count;
-    ADDRINT callee;
     bool lib;
+    //ADDRINT callee;
 };
