@@ -93,7 +93,7 @@ VOID do_call(const string *s,ADDRINT target)
         case '@':
             break;
         default:
-            Func_list.push_back({s->c_str(),(target - image_base),1,isLib});
+            Func_list.push_back({s->c_str(),(target),1,isLib,std::vector<args>()});
         }
     }
 }
@@ -110,6 +110,18 @@ VOID  do_call_indirect(ADDRINT target, BOOL taken)
         delete s;
 }
 
+void log_args(ADDRINT ip, ADDRINT arg0, ADDRINT arg1){
+
+    if(ip < LIBC_BASE){
+        for (auto &itr : Func_list){
+            if (itr.address == ip){
+                    itr.args_list.push_back({arg0,arg1});
+                return;
+            }
+        }
+    }
+}
+
 VOID Trace(TRACE trace, VOID *v)
 {   
     for (BBL bbl = TRACE_BblHead(trace); BBL_Valid(bbl); bbl = BBL_Next(bbl))
@@ -123,11 +135,22 @@ VOID Trace(TRACE trace, VOID *v)
                 ADDRINT target = INS_DirectControlFlowTargetAddress(tail);
                 INS_InsertPredicatedCall(tail, IPOINT_BEFORE, AFUNPTR(do_call),
                                             IARG_PTR,Target2String(target),IARG_BRANCH_TARGET_ADDR,IARG_END);
+                INS_InsertPredicatedCall(tail, IPOINT_BEFORE, AFUNPTR(log_args),
+                                        IARG_BRANCH_TARGET_ADDR,
+                                        IARG_FUNCARG_CALLSITE_VALUE, 0,
+                                        IARG_FUNCARG_CALLSITE_VALUE, 1,
+                                        IARG_END);
+
             }
             else
             {
                 INS_InsertCall(tail, IPOINT_BEFORE, AFUNPTR(do_call_indirect),
                             IARG_BRANCH_TARGET_ADDR, IARG_BRANCH_TAKEN, IARG_END);
+                INS_InsertCall(tail, IPOINT_BEFORE, AFUNPTR(log_args),
+                                        IARG_BRANCH_TARGET_ADDR,
+                                        IARG_FUNCARG_CALLSITE_VALUE, 0,
+                                        IARG_FUNCARG_CALLSITE_VALUE, 1,
+                                        IARG_END);
             }
         }
         else
@@ -140,6 +163,11 @@ VOID Trace(TRACE trace, VOID *v)
             {
                 INS_InsertCall(tail, IPOINT_BEFORE, AFUNPTR(do_call_indirect),
                                    IARG_BRANCH_TARGET_ADDR, IARG_BRANCH_TAKEN,IARG_END);
+                INS_InsertCall(tail, IPOINT_BEFORE, AFUNPTR(log_args),
+                                        IARG_BRANCH_TARGET_ADDR,
+                                        IARG_FUNCARG_CALLSITE_VALUE, 0,
+                                        IARG_FUNCARG_CALLSITE_VALUE, 1,
+                                        IARG_END);
             }
         }
         
@@ -153,8 +181,16 @@ VOID Fini(INT32 code, VOID *v)
     printf("[+] Function call details\n");
     printf("%-40s%-25s%-20s%-10s\n", "Function Name", "hitCount", "Offset" , "isLibrary");
     for (auto & itr : Func_list){
-         printf("%-40s%-25d0x%-20lx%-10d\n", itr.name.c_str(), itr.count, itr.address , itr.lib);
+         printf("%-40s%-25d0x%-20lx%-10d\n", itr.name.c_str(), itr.count, (itr.address < LIBC_BASE) ? (itr.address - image_base) : itr.address , itr.lib);
 	}
+    for (auto & itr : Func_list){
+        if((itr.address < LIBC_BASE) && itr.count > 2){
+            printf("[+] Some of the args passed to function at offset 0x%lx are :\n",(itr.address - image_base));
+            for (auto & itr2 : itr.args_list){
+                printf("arg0: 0x%lx arg1: 0x%lx\n",itr2.arg1,itr2.arg2);
+            }
+        }  
+    }
 }
 
 int  main(int argc, char *argv[])
