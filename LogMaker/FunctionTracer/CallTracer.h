@@ -1,7 +1,12 @@
 #include "pin.H"
 using std::string;
+#include <vector>
 
 #define LIBC_BASE 0x700000000000
+struct args{
+    ADDRINT arg1;
+    ADDRINT arg2;
+};
 
 struct Func
 {
@@ -9,5 +14,6 @@ struct Func
     ADDRINT address;
     int count;
     bool lib;
-    //ADDRINT callee;
+    std::vector<args> args_list;
+    
 };
