@@ -8,6 +8,12 @@ struct args{
     ADDRINT arg2;
 };
 
+struct Images{
+    string name;
+    ADDRINT lowaddr;
+    ADDRINT higaddr;
+};
+
 struct Func
 {
     string name;
