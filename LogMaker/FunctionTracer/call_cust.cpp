@@ -16,6 +16,7 @@ bool isLib = 0;
 
 ADDRINT image_base;
 std::vector<Func> Func_list;
+std::vector<Images> Image_list;
 std::map<string, int> countMap;
 
 string invalid = "$";
@@ -30,7 +31,15 @@ INT32 Usage()
 VOID Image(IMG img, VOID *v){
     
     bool isMainExecutable = IMG_IsMainExecutable(img);
-    
+    string name;
+    std::size_t idx;
+    for( IMG img= APP_ImgHead(); IMG_Valid(img); img = IMG_Next(img) ){
+        name = IMG_Name(img);
+        idx = name.find_last_of("/\\");
+        name = name.substr(idx+1);
+        Image_list.push_back({name,IMG_LowAddress(img),IMG_HighAddress(img)});
+        //printf("[+] Loaded image %s at %lx\n",name.c_str(),IMG_LowAddress(img));
+    }
     if (isMainExecutable == true){
             image_base   = IMG_LowAddress(img);
     }
@@ -174,15 +183,31 @@ VOID Trace(TRACE trace, VOID *v)
     }
 }
 
+void common_args(){
+    return ;
+}
+
 VOID Fini(INT32 code, VOID *v)
 {   
+    int userDefCallsCount = 0; //Count the number of user defined functions
+
     printf("[+] Analysis Complete\n");
     printf ("[+] Image starts at address    = 0x%zx \n", image_base);
     printf("[+] Function call details\n");
-    printf("%-40s%-25s%-20s%-10s\n", "Function Name", "hitCount", "Offset" , "isLibrary");
+    printf("%-40s%-25s%-20s%-20s%-10s\n", "Function Name", "hitCount", "Offset" , "isLibrary","ImageName");
+    string imageName;
     for (auto & itr : Func_list){
-         printf("%-40s%-25d0x%-20lx%-10d\n", itr.name.c_str(), itr.count, (itr.address < LIBC_BASE) ? (itr.address - image_base) : itr.address , itr.lib);
+        for (auto & itrImage : Image_list){
+            if((itr.address > itrImage.lowaddr) && (itr.address < itrImage.higaddr))
+                imageName = itrImage.name;
+        }
+        printf("%-40s%-25d0x%-20lx%-20d%-10s\n", itr.name.c_str(), itr.count, (itr.address < LIBC_BASE) ? (itr.address - image_base) : itr.address , itr.lib,imageName.c_str());
+        if(!itr.lib){
+            userDefCallsCount++;
+        }
 	}
+    printf("[+] Number of user defined functions : %d\n",userDefCallsCount);
+    common_args();
     for (auto & itr : Func_list){
         if((itr.address < LIBC_BASE) && itr.count > 2){
             printf("[+] Some of the args passed to function at offset 0x%lx are :\n",(itr.address - image_base));
